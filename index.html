@@ -390,68 +390,23 @@ let onlyPend = false, onlyHigh = false;
 let chartMLP = null, chartClass = null;
 let sortCol = 'BPP_CASHOUT_USD', sortDir = -1;
 
-// ── FETCH CSV from Google Sheets (gviz/tq — sem CORS para abas públicas)
-function sheetUrl(gid) {
-  return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
-}
-
-async function fetchCSV(gid) {
-  const resp = await fetch(sheetUrl(gid));
-  if (!resp.ok) throw new Error(`Erro HTTP ${resp.status} ao buscar gid=${gid}`);
-  const text = await resp.text();
-  return parseCSV(text);
-}
-
-function parseCSV(text) {
-  const rows = text.trim().split(/\r?\n/);
-  if (rows.length < 2) return [];
-  const headers = splitCSVLine(rows[0]).map(h => h.replace(/^"|"$/g,'').trim());
-  return rows.slice(1).map(line => {
-    const vals = splitCSVLine(line).map(v => v.replace(/^"|"$/g,'').trim());
-    const obj = {};
-    headers.forEach((h,i) => obj[h] = vals[i] ?? '');
-    return obj;
-  }).filter(r => Object.values(r).some(v => v !== ''));
-}
-
-function splitCSVLine(line) {
-  const out = []; let cur = ''; let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
-    else if (c === ',' && !inQ) { out.push(cur); cur=''; }
-    else cur += c;
-  }
-  out.push(cur);
-  return out;
-}
-
-// ── MAIN LOAD
+// ── MAIN LOAD — lê data.json gerado pelo Apps Script
 async function loadData() {
   const btn = document.getElementById('btnRefresh');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block"></span> Carregando…';
 
-  const needsConfig = CONFIG.GID_TRATATIVAS === 'SUBSTITUIR_PELO_GID_DA_ABA_FORMS';
-  document.getElementById('configBanner').style.display = needsConfig ? '' : 'none';
+  document.getElementById('configBanner').style.display = 'none';
 
   try {
-    // Ocorrências
-    const ocRaw = await fetchCSV(CONFIG.GID_OCORRENCIAS);
-    allOc = ocRaw.filter(r => r['SHIPMENT_ID'] && r['SHIPMENT_ID'] !== 'SHIPMENT_ID');
+    const resp = await fetch('./data.json?t=' + Date.now());
+    if (!resp.ok) throw new Error(`Erro HTTP ${resp.status} ao buscar data.json`);
+    const data = await resp.json();
 
-    // Tratativas
-    if (!needsConfig) {
-      try {
-        const tratRaw = await fetchCSV(CONFIG.GID_TRATATIVAS);
-        allTrat = tratRaw.filter(r => r['Carimbo de data/hora'] || r['Qual o ID do pacote']);
-      } catch(e) {
-        console.warn('Não foi possível carregar tratativas:', e);
-        allTrat = [];
-      }
-    } else {
-      allTrat = [];
-    }
+    allOc   = (data.ocorrencias || []).filter(r => r['SHIPMENT_ID'] && r['SHIPMENT_ID'] !== 'SHIPMENT_ID');
+    allTrat = (data.tratativas  || []).filter(r => r['Carimbo de data/hora'] || r['Qual o ID do pacote']);
+
+    const updatedAt = data.updatedAt ? new Date(data.updatedAt).toLocaleString('pt-BR') : '?';
 
     buildFilters();
     applyFilters();
@@ -459,7 +414,7 @@ async function loadData() {
     renderResumo();
 
     document.getElementById('lastUpdated').textContent =
-      `⏱ Atualizado: ${new Date().toLocaleString('pt-BR')}` +
+      `⏱ Dados de: ${updatedAt}` +
       ` · ${allOc.length} ocorrências · ${allTrat.length} tratativas`;
   } catch(err) {
     document.getElementById('tblContainer').innerHTML =
