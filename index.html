@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel BPP SMG8 · Tratativas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --yellow: #FFE600;
+      --black: #333333;
+      --bg: #F5F5F5;
+      --white: #FFFFFF;
+      --border: #E0E0E0;
+      --text-muted: #777;
+      --red: #E03131;
+      --green: #2F9E44;
+      --blue: #1971C2;
+      --orange: #E67700;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--black);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--yellow);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-logo { height: 30px; }
+    .header-title h1 { font-size: 17px; font-weight: 800; color: var(--black); }
+    .header-title p { font-size: 12px; color: #555; margin-top: 1px; }
+    .btn-refresh {
+      background: var(--black); color: var(--yellow);
+      border: none; padding: 8px 16px; border-radius: 6px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      transition: opacity .2s;
+    }
+    .btn-refresh:hover { opacity: .8; }
+    .btn-refresh:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── NAV ── */
+    nav {
+      background: var(--white);
+      border-bottom: 2px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      overflow-x: auto;
+    }
+    nav button {
+      background: none; border: none;
+      padding: 13px 18px;
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      transition: color .15s;
+    }
+    nav button.active { color: var(--black); border-bottom-color: var(--black); }
+    nav button:hover:not(.active) { color: var(--black); background: #f9f9f9; }
+
+    /* ── LAYOUT ── */
+    main { padding: 22px 24px; max-width: 1440px; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── FILTERS ── */
+    .filters {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: flex-end; margin-bottom: 20px;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-group label {
+      font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted);
+    }
+    .filter-group select {
+      padding: 8px 12px; border: 1.5px solid var(--border);
+      border-radius: 6px; font-size: 13px;
+      background: var(--white); min-width: 155px; cursor: pointer;
+    }
+    .filter-group select:focus { outline: none; border-color: var(--black); }
+
+    /* ── KPI CARDS ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 14px; margin-bottom: 22px;
+    }
+    .kpi-card {
+      background: var(--white); border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      border-left: 4px solid var(--yellow);
+    }
+    .kpi-card.red   { border-left-color: var(--red); }
+    .kpi-card.green { border-left-color: var(--green); }
+    .kpi-card.blue  { border-left-color: var(--blue); }
+    .kpi-label {
+      font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .6px;
+      color: var(--text-muted); margin-bottom: 7px;
+    }
+    .kpi-value { font-size: 30px; font-weight: 900; line-height: 1; }
+    .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+    /* ── CHARTS ROW ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      gap: 14px; margin-bottom: 22px;
+    }
+    .chart-card {
+      background: var(--white); border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .chart-card h3 {
+      font-size: 13px; font-weight: 700;
+      margin-bottom: 14px; color: var(--black);
+    }
+
+    /* ── TABLE CARD ── */
+    .table-card {
+      background: var(--white); border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .table-header {
+      display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap;
+      gap: 10px; margin-bottom: 14px;
+    }
+    .table-header h3 { font-size: 13px; font-weight: 700; }
+    .table-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn-toggle {
+      background: var(--bg); border: 1.5px solid var(--border);
+      padding: 5px 11px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-toggle.active { background: var(--black); color: var(--yellow); border-color: var(--black); }
+    .table-count { font-size: 12px; color: var(--text-muted); }
+
+    .tbl-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 9px 12px;
+      background: #F8F8F8;
+      font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    th:hover { background: #EFEFEF; }
+    th .sort-icon { margin-left: 4px; opacity: .4; }
+    th.sorted .sort-icon { opacity: 1; }
+    td {
+      padding: 9px 12px; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #FAFAFA; }
+
+    .mono { font-family: monospace; font-size: 11px; color: #555; }
+    .truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+    .fw7 { font-weight: 700; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block; padding: 3px 7px; border-radius: 4px;
+      font-size: 10px; font-weight: 800; white-space: nowrap;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .b-pending   { background: #FFF3F3; color: var(--red); }
+    .b-analyzing { background: #E7F5FF; color: var(--blue); }
+    .b-resolved  { background: #EBFBEE; color: var(--green); }
+    .b-highvalue { background: #FFF9DB; color: var(--orange); }
+    .b-class     { background: #F3F0FF; color: #6741D9; }
+    .b-sub       { background: #E8F5E9; color: #2E7D32; font-size: 9px; }
+    .b-lost      { background: #FFF3F3; color: var(--red); }
+    .b-damaged   { background: #FFF9DB; color: var(--orange); }
+    .b-stolen    { background: #FCE4EC; color: #C62828; }
+    .b-pnr       { background: #E8EAF6; color: #283593; }
+    .b-delayed   { background: #FFF3E0; color: #E65100; }
+
+    .val-high { color: var(--red); font-weight: 800; }
+    .val-normal { font-weight: 700; }
+
+    /* ── LOADING / EMPTY ── */
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      padding: 56px; color: var(--text-muted); font-size: 13px; gap: 10px;
+    }
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid var(--border); border-top-color: var(--black);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+    .error-msg { color: var(--red); text-align: center; padding: 20px; font-size: 13px; }
+
+    .last-updated { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 10px; }
+
+    /* ── RESUMO ── */
+    .resumo-kpi-row {
+      display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr));
+      gap: 14px; margin-top: 16px;
+    }
+
+    /* ── BANNER de configuração ── */
+    .config-banner {
+      background: #FFF9DB; border: 1.5px solid #FFD43B;
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 18px;
+      font-size: 12px; color: #5C3D00; line-height: 1.6;
+    }
+    .config-banner strong { font-weight: 700; }
+
+    @media (max-width: 768px) {
+      .charts-row { grid-template-columns: 1fr; }
+      main { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <img class="header-logo"
+         src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/6.6.92/mercadolibre/logo__large_plus.png"
+         alt="Mercado Livre"
+         onerror="this.style.display='none'">
+    <div class="header-title">
+      <h1>Painel BPP SMG8</h1>
+      <p>Tratativas de Ocorrências</p>
+    </div>
+  </div>
+  <button class="btn-refresh" id="btnRefresh" onclick="loadData()">
+    <span>↻</span> Atualizar dados
+  </button>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('cashout',this)">BPP Cashout</button>
+  <button onclick="switchTab('tratativas',this)">Tratativas</button>
+  <button onclick="switchTab('resumo',this)">Resumo KPIs</button>
+</nav>
+
+<main>
+
+  <!-- ═══════════════ TAB 1 — BPP CASHOUT ═══════════════ -->
+  <div class="tab-content active" id="tab-cashout">
+
+    <div id="configBanner" class="config-banner" style="display:none">
+      ⚙️ <strong>Configuração necessária:</strong> Abra o código HTML e ajuste
+      <strong>GID_TRATATIVAS</strong> com o ID da aba de respostas do Forms.
+      Clique nessa aba na planilha e veja o número no final da URL: <code>…#gid=<strong>NÚMERO</strong></code>.
+      Após ajustar, hospede o arquivo e o painel estará completo.
+    </div>
+
+    <div class="filters">
+      <div class="filter-group">
+        <label>MLP</label>
+        <select id="filterMLP" onchange="applyFilters()">
+          <option value="">Todas as MLPs</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Semana</label>
+        <select id="filterSemana" onchange="applyFilters()">
+          <option value="">Todas as semanas</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Classificação</label>
+        <select id="filterClass" onchange="applyFilters()">
+          <option value="">Todas as classificações</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Registros</div>
+        <div class="kpi-value" id="kpiReg">—</div>
+        <div class="kpi-sub" id="kpiRegSub">de — no total</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Pendentes</div>
+        <div class="kpi-value" id="kpiPend">—</div>
+        <div class="kpi-sub">sem tratativa registrada</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">% Tratado</div>
+        <div class="kpi-value" id="kpiPct">—</div>
+        <div class="kpi-sub" id="kpiPctSub">tratativas registradas</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Valor Pendente</div>
+        <div class="kpi-value" id="kpiValor" style="font-size:22px">—</div>
+        <div class="kpi-sub">USD · sem tratativa</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Pendências por MLP</h3>
+        <canvas id="chartMLP" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Classificação das Ocorrências</h3>
+        <canvas id="chartClass" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <h3 id="tblTitle">Ocorrências</h3>
+        <div class="table-actions">
+          <button class="btn-toggle" id="btnPend" onclick="togglePend()">Só pendentes</button>
+          <button class="btn-toggle" id="btnHigh" onclick="toggleHigh()">High Value (≥ US$ 100)</button>
+          <span class="table-count" id="tblCount"></span>
+        </div>
+      </div>
+      <div id="tblContainer">
+        <div class="loading"><div class="spinner"></div> Carregando dados da planilha…</div>
+      </div>
+    </div>
+
+    <div class="last-updated" id="lastUpdated"></div>
+  </div>
+
+  <!-- ═══════════════ TAB 2 — TRATATIVAS ═══════════════ -->
+  <div class="tab-content" id="tab-tratativas">
+    <div class="table-card">
+      <div class="table-header">
+        <h3>Tratativas Registradas via Forms</h3>
+        <span class="table-count" id="tratCount"></span>
+      </div>
+      <div id="tratContainer">
+        <div class="loading"><div class="spinner"></div> Carregando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB 3 — RESUMO ═══════════════ -->
+  <div class="tab-content" id="tab-resumo">
+    <div id="resumoContainer">
+      <div class="loading"><div class="spinner"></div> Carregando…</div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  CONFIGURAÇÃO — edite aqui antes de hospedar                    ║
+// ╠══════════════════════════════════════════════════════════════════╣
+// ║  1. SHEET_ID: ID da sua Google Sheets (já preenchido)           ║
+// ║  2. GID_OCORRENCIAS: aba das ocorrências BPP (padrão = '0')     ║
+// ║  3. GID_TRATATIVAS: aba de respostas do Google Forms            ║
+// ║     → Clique na aba na planilha, veja o número no final da URL  ║
+// ║       exemplo: …spreadsheets/d/ID/edit#gid=1234567890           ║
+// ╚══════════════════════════════════════════════════════════════════╝
+const CONFIG = {
+  SHEET_ID:         '15yJj1lnW1i05KNYahFgendVPKGL1aitllATBi4JOrxk',
+  GID_OCORRENCIAS:  '0',
+  GID_TRATATIVAS:   '274708796', // ← ajuste aqui
+  HIGH_VALUE_USD:    100,
+};
+// ════════════════════════════════════════════════════════════════════
+
+let allOc = [], allTrat = [], filteredOc = [];
+let onlyPend = false, onlyHigh = false;
+let chartMLP = null, chartClass = null;
+let sortCol = 'BPP_CASHOUT_USD', sortDir = -1;
+
+// ── FETCH CSV from Google Sheets (gviz/tq — sem CORS para abas públicas)
+function sheetUrl(gid) {
+  return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+}
+
+async function fetchCSV(gid) {
+  const resp = await fetch(sheetUrl(gid));
+  if (!resp.ok) throw new Error(`Erro HTTP ${resp.status} ao buscar gid=${gid}`);
+  const text = await resp.text();
+  return parseCSV(text);
+}
+
+function parseCSV(text) {
+  const rows = text.trim().split(/\r?\n/);
+  if (rows.length < 2) return [];
+  const headers = splitCSVLine(rows[0]).map(h => h.replace(/^"|"$/g,'').trim());
+  return rows.slice(1).map(line => {
+    const vals = splitCSVLine(line).map(v => v.replace(/^"|"$/g,'').trim());
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = vals[i] ?? '');
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ''));
+}
+
+function splitCSVLine(line) {
+  const out = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
+    else if (c === ',' && !inQ) { out.push(cur); cur=''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+// ── MAIN LOAD
+async function loadData() {
+  const btn = document.getElementById('btnRefresh');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block"></span> Carregando…';
+
+  const needsConfig = CONFIG.GID_TRATATIVAS === 'SUBSTITUIR_PELO_GID_DA_ABA_FORMS';
+  document.getElementById('configBanner').style.display = needsConfig ? '' : 'none';
+
+  try {
+    // Ocorrências
+    const ocRaw = await fetchCSV(CONFIG.GID_OCORRENCIAS);
+    allOc = ocRaw.filter(r => r['SHIPMENT_ID'] && r['SHIPMENT_ID'] !== 'SHIPMENT_ID');
+
+    // Tratativas
+    if (!needsConfig) {
+      try {
+        const tratRaw = await fetchCSV(CONFIG.GID_TRATATIVAS);
+        allTrat = tratRaw.filter(r => r['Carimbo de data/hora'] || r['Qual o ID do pacote']);
+      } catch(e) {
+        console.warn('Não foi possível carregar tratativas:', e);
+        allTrat = [];
+      }
+    } else {
+      allTrat = [];
+    }
+
+    buildFilters();
+    applyFilters();
+    renderTratativas();
+    renderResumo();
+
+    document.getElementById('lastUpdated').textContent =
+      `⏱ Atualizado: ${new Date().toLocaleString('pt-BR')}` +
+      ` · ${allOc.length} ocorrências · ${allTrat.length} tratativas`;
+  } catch(err) {
+    document.getElementById('tblContainer').innerHTML =
+      `<div class="error-msg">
+        ❌ Não foi possível carregar a planilha.<br>
+        <small>${err.message}</small><br><br>
+        <small><strong>Verifique:</strong> a planilha precisa estar com acesso
+        <em>"Qualquer pessoa com o link pode visualizar"</em>.</small>
+      </div>`;
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>↻</span> Atualizar dados';
+}
+
+// ── FILTERS
+function buildFilters() {
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  const mlps = uniq(allOc.map(r => r['MLP']));
+  const sems = uniq(allOc.map(r => r['ANO_SEMANA'])).reverse();
+  const classes = uniq(allOc.map(r => r['CLASSIFICATION_LG']));
+
+  populate('filterMLP', mlps, 'Todas as MLPs');
+  populate('filterSemana', sems, 'Todas as semanas', s => weekLabel(s));
+  populate('filterClass', classes, 'Todas as classificações');
+
+  // Selecionar semana mais recente por padrão
+  if (sems.length) document.getElementById('filterSemana').value = sems[0];
+}
+
+function populate(id, items, placeholder, fmt) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    items.map(v => `<option value="${v}">${fmt ? fmt(v) : v}</option>`).join('');
+}
+
+function weekLabel(w) {
+  const m = w && w.match(/(\d{4})-W(\d+)/);
+  return m ? `Semana ${m[2]} · ${m[1]}` : w;
+}
+
+function applyFilters() {
+  const mlp  = document.getElementById('filterMLP').value;
+  const sem  = document.getElementById('filterSemana').value;
+  const cls  = document.getElementById('filterClass').value;
+
+  filteredOc = allOc.filter(r => {
+    if (mlp && r['MLP'] !== mlp) return false;
+    if (sem && r['ANO_SEMANA'] !== sem) return false;
+    if (cls && r['CLASSIFICATION_LG'] !== cls) return false;
+    return true;
+  });
+
+  updateKPIs();
+  updateCharts();
+  renderTable();
+}
+
+// ── TRATATIVA LOOKUP
+function getTrat(shipmentId) {
+  const id = String(shipmentId).trim();
+  return allTrat.find(t => String(t['Qual o ID do pacote']||'').trim() === id);
+}
+const isPend = r => !getTrat(r['SHIPMENT_ID']);
+
+// ── KPIs
+function updateKPIs() {
+  const total = filteredOc.length;
+  const pends = filteredOc.filter(isPend).length;
+  const tratados = total - pends;
+  const pct = total ? Math.round(tratados/total*100) : 0;
+  const valor = filteredOc.filter(isPend).reduce((s,r) => s + num(r['BPP_CASHOUT_USD']), 0);
+
+  set('kpiReg',  total.toLocaleString('pt-BR'));
+  set('kpiRegSub', `de ${allOc.length.toLocaleString('pt-BR')} no total`);
+  set('kpiPend', pends.toLocaleString('pt-BR'));
+  set('kpiPct',  pct + '%');
+  set('kpiPctSub', `${tratados} tratativa${tratados!==1?'s':''}`);
+  set('kpiValor', fmtUSD(valor));
+}
+
+// ── CHARTS
+function updateCharts() {
+  const PALETTE = ['#FFE600','#333333','#FF6B6B','#51CF66','#339AF0',
+                   '#CC5DE8','#FF922B','#20C997','#F06595','#74C0FC'];
+
+  // Chart 1 — Bar horizontal por MLP (pendentes)
+  const mlpMap = {};
+  filteredOc.filter(isPend).forEach(r => {
+    const k = r['MLP'] || 'Sem MLP';
+    if (!mlpMap[k]) mlpMap[k] = { count:0, val:0 };
+    mlpMap[k].count++;
+    mlpMap[k].val += num(r['BPP_CASHOUT_USD']);
+  });
+  const mlpSorted = Object.entries(mlpMap).sort((a,b)=>b[1].count-a[1].count).slice(0,15);
+
+  if (chartMLP) chartMLP.destroy();
+  chartMLP = new Chart(document.getElementById('chartMLP').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: mlpSorted.map(([k]) => k.length>20 ? k.slice(0,20)+'…' : k),
+      datasets: [
+        {
+          label: 'Pendências',
+          data: mlpSorted.map(([,v])=>v.count),
+          backgroundColor: '#FFE600', borderColor:'#ccc', borderWidth:1,
+          borderRadius:3, yAxisID:'y',
+        },
+        {
+          label: 'Valor (US$)',
+          data: mlpSorted.map(([,v])=>+v.val.toFixed(2)),
+          backgroundColor: '#333333', borderRadius:3,
+          yAxisID:'y2',
+        }
+      ]
+    },
+    options: {
+      indexAxis:'y', responsive:true,
+      plugins:{
+        legend:{ position:'bottom', labels:{font:{size:11}, padding:10} },
+        tooltip:{
+          callbacks:{
+            label:(ctx) => ctx.datasetIndex===1
+              ? ` US$ ${(+ctx.raw).toLocaleString('pt-BR',{minimumFractionDigits:2})}`
+              : ` ${ctx.raw} ocorrências`
+          }
+        }
+      },
+      scales:{
+        x:{ grid:{display:false} },
+        y:{ ticks:{font:{size:11}} },
+        y2:{ display:false },
+      }
+    }
+  });
+
+  // Chart 2 — Donut classificações
+  const clsMap = {};
+  filteredOc.forEach(r => { const k=r['CLASSIFICATION_LG']||'Outro'; clsMap[k]=(clsMap[k]||0)+1; });
+  const clsSorted = Object.entries(clsMap).sort((a,b)=>b[1]-a[1]);
+
+  if (chartClass) chartClass.destroy();
+  chartClass = new Chart(document.getElementById('chartClass').getContext('2d'), {
+    type:'doughnut',
+    data:{
+      labels: clsSorted.map(([k])=>k),
+      datasets:[{ data:clsSorted.map(([,v])=>v), backgroundColor:PALETTE, borderWidth:2, borderColor:'#fff' }]
+    },
+    options:{
+      responsive:true, cutout:'55%',
+      plugins:{
+        legend:{ position:'right', labels:{font:{size:10},padding:8} },
+        tooltip:{
+          callbacks:{
+            label:(ctx)=>` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw/filteredOc.length*100)}%)`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── TABLE
+function togglePend() { onlyPend=!onlyPend; document.getElementById('btnPend').classList.toggle('active',onlyPend); renderTable(); }
+function toggleHigh() { onlyHigh=!onlyHigh; document.getElementById('btnHigh').classList.toggle('active',onlyHigh); renderTable(); }
+
+function renderTable() {
+  let rows = filteredOc.filter(r => {
+    if (onlyPend && !isPend(r)) return false;
+    if (onlyHigh && num(r['BPP_CASHOUT_USD']) < CONFIG.HIGH_VALUE_USD) return false;
+    return true;
+  });
+
+  // Sort
+  rows.sort((a,b) => {
+    let av = a[sortCol] || '', bv = b[sortCol] || '';
+    if (sortCol === 'BPP_CASHOUT_USD') { av=num(av); bv=num(bv); }
+    return av > bv ? sortDir : av < bv ? -sortDir : 0;
+  });
+
+  set('tblTitle', `Ocorrências${onlyPend?' · Só Pendentes':''}${onlyHigh?' · High Value':''}`);
+  set('tblCount', `${rows.length} registro${rows.length!==1?'s':''}`);
+
+  if (!rows.length) {
+    document.getElementById('tblContainer').innerHTML = '<div class="empty">Nenhum registro com os filtros selecionados.</div>';
+    return;
+  }
+
+  const cols = [
+    { key:'SHIPMENT_ID',     label:'Shipment ID' },
+    { key:'MLP',             label:'MLP' },
+    { key:'DRIVER_ID',       label:'Driver ID' },
+    { key:'Produto',         label:'Produto' },
+    { key:'CLASSIFICATION_LG', label:'Classificação' },
+    { key:'SHP_LG_SUB_STATUS', label:'Sub-Status' },
+    { key:'ANO_SEMANA',      label:'Semana' },
+    { key:'BPP_CASHOUT_USD', label:'Valor (USD)' },
+    { key:'_trat',           label:'Tratativa' },
+  ];
+
+  const thead = cols.map(c => {
+    const sorted = c.key===sortCol;
+    const icon = sorted ? (sortDir===1 ? '▲':'▼') : '⇅';
+    return `<th class="${sorted?'sorted':''}" onclick="sortBy('${c.key}')">
+      ${c.label} <span class="sort-icon">${icon}</span>
+    </th>`;
+  }).join('');
+
+  const tbody = rows.map(r => {
+    const trat = getTrat(r['SHIPMENT_ID']);
+    const valor = num(r['BPP_CASHOUT_USD']);
+    const isHV = valor >= CONFIG.HIGH_VALUE_USD;
+    const status = trat ? (trat['Status atual do acompanhamento'] || 'Em análise') : 'Pendente';
+    const statusCls = status==='Pendente' ? 'b-pending'
+                    : /resolv/i.test(status) ? 'b-resolved' : 'b-analyzing';
+    const clsCls = classBadge(r['CLASSIFICATION_LG']);
+
+    return `<tr>
+      <td><span class="mono">${r['SHIPMENT_ID']}</span></td>
+      <td class="fw7">${r['MLP']||'—'}</td>
+      <td><span class="mono">${r['DRIVER_ID']||'—'}</span></td>
+      <td><span class="truncate" title="${esc(r['Produto'])}">${r['Produto']||'—'}</span></td>
+      <td><span class="badge ${clsCls}">${r['CLASSIFICATION_LG']||'—'}</span></td>
+      <td><span class="badge b-sub">${r['SHP_LG_SUB_STATUS']||'—'}</span></td>
+      <td style="font-size:12px">${weekLabel(r['ANO_SEMANA'])}</td>
+      <td>
+        <span class="${isHV?'val-high':'val-normal'}">${fmtUSD(valor)}</span>
+        ${isHV ? `<br><span class="badge b-highvalue">High Value</span>` : ''}
+      </td>
+      <td>
+        <span class="badge ${statusCls}">${status}</span>
+        ${trat ? `<br><span style="font-size:10px;color:#777">${esc(trat['Quem está tratando ?']||trat['Quem está tratando?']||'')}</span>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tblContainer').innerHTML =
+    `<div class="tbl-scroll"><table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  renderTable();
+}
+
+function classBadge(cls) {
+  if (!cls) return 'b-class';
+  if (/LOST/i.test(cls))    return 'b-lost';
+  if (/DAMAGED/i.test(cls)) return 'b-damaged';
+  if (/STOLEN/i.test(cls))  return 'b-stolen';
+  if (/PNR/i.test(cls))     return 'b-pnr';
+  if (/DELAYED/i.test(cls)) return 'b-delayed';
+  return 'b-class';
+}
+
+// ── TRATATIVAS TAB
+function renderTratativas() {
+  set('tratCount', `${allTrat.length} tratativa${allTrat.length!==1?'s':''}`);
+
+  if (!allTrat.length) {
+    document.getElementById('tratContainer').innerHTML =
+      '<div class="empty">Nenhuma tratativa registrada ainda.<br><small>Verifique se o GID_TRATATIVAS está configurado corretamente.</small></div>';
+    return;
+  }
+
+  const rows = [...allTrat].sort((a,b) => (b['Carimbo de data/hora']||'').localeCompare(a['Carimbo de data/hora']||''));
+
+  const tbody = rows.map(r => {
+    const status = r['Status atual do acompanhamento'] || '—';
+    const sCls = /resolv/i.test(status) ? 'b-resolved' : 'b-analyzing';
+    const link = r['LINK EVIDÊNCIA'];
+    return `<tr>
+      <td style="font-size:11px;white-space:nowrap">${r['Carimbo de data/hora']||'—'}</td>
+      <td class="fw7">${esc(r['MLP']||'—')}</td>
+      <td>${esc(r['Quem está tratando ?']||r['Quem está tratando?']||'—')}</td>
+      <td><span class="badge b-pnr">${esc(r['Qual tratativa ?']||r['Qual tratativa?']||'—')}</span></td>
+      <td><span class="mono">${r['Qual o ID do pacote']||'—'}</span></td>
+      <td style="max-width:200px;font-size:12px">${esc(r['Qual tratativa feita/ Solução de caso !']||'—')}</td>
+      <td><span class="badge ${sCls}">${status}</span></td>
+      <td style="font-size:11px">${r['Data prevista para resolução']||'—'}</td>
+      <td>${link ? `<a href="${esc(link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue)">Ver evidência ↗</a>` : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tratContainer').innerHTML = `
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th>Data/Hora</th><th>MLP</th><th>Responsável</th><th>Tipo</th>
+          <th>Shipment ID</th><th>Solução</th><th>Status</th>
+          <th>Previsão</th><th>Evidência</th>
+        </tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── RESUMO TAB
+function renderResumo() {
+  const mlpMap = {};
+  allOc.forEach(r => {
+    const k = r['MLP'] || 'Sem MLP';
+    if (!mlpMap[k]) mlpMap[k] = { tot:0, pend:0, valTot:0, valPend:0 };
+    mlpMap[k].tot++;
+    mlpMap[k].valTot += num(r['BPP_CASHOUT_USD']);
+    if (isPend(r)) { mlpMap[k].pend++; mlpMap[k].valPend += num(r['BPP_CASHOUT_USD']); }
+  });
+
+  const sorted = Object.entries(mlpMap).sort((a,b)=>b[1].pend-a[1].pend);
+  const totalPend = allOc.filter(isPend).length;
+  const totalVal = allOc.reduce((s,r)=>s+num(r['BPP_CASHOUT_USD']),0);
+  const totalValPend = allOc.filter(isPend).reduce((s,r)=>s+num(r['BPP_CASHOUT_USD']),0);
+
+  const tbody = sorted.map(([mlp, s]) => {
+    const pct = s.tot ? Math.round((s.tot-s.pend)/s.tot*100) : 0;
+    const color = pct>=70?'var(--green)': pct>=30?'var(--orange)':'var(--red)';
+    return `<tr>
+      <td class="fw7">${mlp}</td>
+      <td>${s.tot}</td>
+      <td><span class="badge b-pending">${s.pend}</span></td>
+      <td>${s.tot-s.pend}</td>
+      <td><span style="font-weight:800;color:${color}">${pct}%</span></td>
+      <td>${fmtUSD(s.valTot)}</td>
+      <td class="${s.valPend>0?'val-high val-normal':''}">${fmtUSD(s.valPend)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('resumoContainer').innerHTML = `
+    <div class="table-card">
+      <div class="table-header">
+        <h3>Resumo por MLP — todas as semanas</h3>
+        <span class="table-count">${sorted.length} MLPs</span>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th>MLP</th><th>Total</th><th>Pendentes</th><th>Tratados</th>
+            <th>% Tratado</th><th>Valor Total (USD)</th><th>Valor Pendente (USD)</th>
+          </tr></thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="resumo-kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Total de Ocorrências</div><div class="kpi-value">${allOc.length}</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Total Pendente</div><div class="kpi-value">${totalPend}</div><div class="kpi-sub">sem tratativa</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Total Tratado</div><div class="kpi-value">${allTrat.length}</div><div class="kpi-sub">tratativas no Forms</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Valor Total USD</div><div class="kpi-value" style="font-size:18px">${fmtUSD(totalVal)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Valor Pend. USD</div><div class="kpi-value" style="font-size:18px;color:var(--red)">${fmtUSD(totalValPend)}</div></div>
+    </div>`;
+}
+
+// ── TABS
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── HELPERS
+const num = v => parseFloat(String(v).replace(',','.')) || 0;
+const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtUSD = v => `US$ ${(+v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
+// ── BOOT
+loadData();
+</script>
+</body>
+</html>
