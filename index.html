@@ -201,6 +201,14 @@
     .val-high { color: var(--red); font-weight: 800; }
     .val-normal { font-weight: 700; }
 
+    .btn-forms {
+      display: inline-block; margin-top: 4px; padding: 3px 8px;
+      background: #E3F2FD; color: #1565C0; border-radius: 4px;
+      font-size: 11px; font-weight: 700; text-decoration: none;
+      white-space: nowrap; transition: background .15s;
+    }
+    .btn-forms:hover { background: #BBDEFB; }
+
     /* ── LOADING / EMPTY ── */
     .loading {
       display: flex; align-items: center; justify-content: center;
@@ -647,7 +655,9 @@ function renderTable() {
       </td>
       <td>
         <span class="badge ${statusCls}">${status}</span>
-        ${trat ? `<br><span style="font-size:10px;color:#777">${esc(trat['Quem está tratando ?']||trat['Quem está tratando?']||'')}</span>` : ''}
+        ${trat
+          ? `<br><span style="font-size:10px;color:#777">${esc(trat['Quem está tratando ?']||trat['Quem está tratando?']||'')}</span>`
+          : `<br><a class="btn-forms" href="https://docs.google.com/forms/d/e/1FAIpQLSdAn1NRCEGrlwF2gfSspdPED1p696xRvRZvHzgGZJivhujVIQ/viewform?usp=pp_url&entry.503162089=${encodeURIComponent(r['SHIPMENT_ID'])}" target="_blank" rel="noopener">📝 Justificar</a>`}
       </td>
     </tr>`;
   }).join('');
